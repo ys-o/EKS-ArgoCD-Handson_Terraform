@@ -74,3 +74,72 @@ data "aws_iam_policy_document" "trust_policy_worker" {
     }
   }
 }
+
+
+
+
+#GHAWorkflow用ロール
+resource "aws_iam_role" "iam_role_ghaworkflow" {
+  name               = "${var.project}-iam-role-ghaworkflow"
+  assume_role_policy = data.aws_iam_policy_document.trust_policy_ghaworkflow.json
+}
+
+#WEBとAPのECRリポジトリ指定してPUSHを許可
+data "aws_iam_policy_document" "iam_policy_document_webap_ecr_push" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "ecr:CompleteLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:InitiateLayerUpload",
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:PutImage",
+      "ecr:BatchGetImage"
+    ]
+    resources = [
+      aws_ecr_repository.ecr_repository_ap.arn,
+      aws_ecr_repository.ecr_repository_web.arn
+    ]
+  }
+  statement {
+    effect    = "Allow"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "iam_policy_webap_ecr_push" {
+  name   = "${var.project}-iam-policy-webap-ecr-push"
+  policy = data.aws_iam_policy_document.iam_policy_document_webap_ecr_push.json
+  tags = {
+    Name = "${var.project}-iam-policy-webap-ecr-push"
+  }
+}
+
+#ポリシーをアタッチ（GHAworkflowマシンがECRにPushすることを許可）
+resource "aws_iam_role_policy_attachment" "policy_attachment_ghaworkflow" {
+  role       = aws_iam_role.iam_role_ghaworkflow.name
+  policy_arn = aws_iam_policy.iam_policy_webap_ecr_push.arn
+}
+
+#信頼ポリシー（GHAWorkflow用ロール用/OIDCによる認証）
+data "aws_iam_policy_document" "trust_policy_ghaworkflow" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github_oidc.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:ys-o@273895000/EKS-ArgoCD-Handson_Application@1387028415:ref:refs/heads/main"]
+    }
+  }
+
+}

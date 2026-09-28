@@ -60,3 +60,7 @@ variable "aws_account_id" {
   description = "AWSのアカウントID、中身はgit管理対象外"
   type        = string
 }
+
+variable "db_username" {
+  type = string
+}
