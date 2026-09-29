@@ -57,7 +57,7 @@ variable "developer_public_ip_cidrs" {
 }
 
 variable "aws_account_id" {
-  description = "AWSのアカウントID、中身はgit管理対象外"
+  description = "AWSのアカウントID、中身はgit管理（＝terraform.tfvars内での定義）対象外"
   type        = string
 }
 

@@ -22,14 +22,19 @@ data "aws_iam_policy_document" "trust_policy_controlplane" {
 }
 
 
-#kubectl実行用ロール
-resource "aws_iam_role" "iam_role_eks_kubectl" {
-  name               = "${var.project}-iam-role-eks-kubectl"
-  assume_role_policy = data.aws_iam_policy_document.trust_policy_bashuser.json
+#kubectl用ロール（閲覧用）
+resource "aws_iam_role" "iam_role_eks_kubectl_viewer" {
+  name               = "${var.project}-iam-role-eks-kubectl-viewer"
+  assume_role_policy = data.aws_iam_policy_document.trust_policy_kubectl_and_provider.json
 }
 
-#信頼ポリシー（kubectl実行用ロール用）
-data "aws_iam_policy_document" "trust_policy_bashuser" {
+#Terraform Kubernetes Provider用ロール(変更・管理用)
+resource "aws_iam_role" "iam_role_eks_kubectl_admin" {
+  name               = "${var.project}-iam-role-eks-kubectl-admin"
+  assume_role_policy = data.aws_iam_policy_document.trust_policy_kubectl_and_provider.json
+}
+#信頼ポリシー（kubectl/Provider用ロール用）
+data "aws_iam_policy_document" "trust_policy_kubectl_and_provider" {
   statement {
     actions = ["sts:AssumeRole"]
     principals {
@@ -46,7 +51,7 @@ resource "aws_iam_role" "iam_role_eks_worker" {
   assume_role_policy = data.aws_iam_policy_document.trust_policy_worker.json
 }
 
-#ポリシーをアタッチ（kubeletによる情報取得）
+#ポリシーをアタッチ（クラスターへの接続等）
 resource "aws_iam_role_policy_attachment" "policy_attachment_eks_worker_kubelet" {
   role       = aws_iam_role.iam_role_eks_worker.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
@@ -84,7 +89,7 @@ resource "aws_iam_role" "iam_role_ghaworkflow" {
   assume_role_policy = data.aws_iam_policy_document.trust_policy_ghaworkflow.json
 }
 
-#WEBとAPのECRリポジトリ指定してPUSHを許可
+#WEBとAPのECRリポジトリ指定してPUSHを許可するポリシー
 data "aws_iam_policy_document" "iam_policy_document_webap_ecr_push" {
   statement {
     effect = "Allow"
@@ -141,5 +146,83 @@ data "aws_iam_policy_document" "trust_policy_ghaworkflow" {
       values   = ["repo:ys-o@273895000/EKS-ArgoCD-Handson_Application@1387028415:ref:refs/heads/main"]
     }
   }
+}
 
+
+
+#KubernetesのSecretリソース生成時の、Secret Manager閲覧用ロール
+resource "aws_iam_role" "iam_role_secret_manager_view" {
+  name               = "${var.project}-iam-role-secret-manager-view"
+  assume_role_policy = data.aws_iam_policy_document.trust_policy_secret_manager_view.json
+}
+
+#Secret Manager上での検索、およびDB認証情報を取得することを許可するポリシー
+data "aws_iam_policy_document" "iam_policy_document_secret_manager_view" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "secretsmanager:ListSecrets",
+      "secretsmanager:BatchGetSecretValue"
+    ]
+    resources = ["*"]
+  }
+  statement {
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret"
+    ]
+    resources = [aws_db_instance.rds.master_user_secret[0].secret_arn]
+  }
+}
+
+resource "aws_iam_policy" "iam_policy_secret_manager_view" {
+  name   = "${var.project}-iam-policy-secret-manager-view"
+  policy = data.aws_iam_policy_document.iam_policy_document_secret_manager_view.json
+  tags = {
+    Name = "${var.project}-iam-policy-secret-manager-view"
+  }
+}
+
+
+#ポリシーをアタッチ（Secret ManagerからDB認証情報を取得することを許可）
+resource "aws_iam_role_policy_attachment" "policy_attachment_secret_manager_view" {
+  role       = aws_iam_role.iam_role_secret_manager_view.name
+  policy_arn = aws_iam_policy.iam_policy_secret_manager_view.arn
+}
+
+#信頼ポリシー（KubernetesのSecretリソース生成時の、Secret Manager閲覧用ロール用）
+data "aws_iam_policy_document" "trust_policy_secret_manager_view" {
+  statement {
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession"
+    ]
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+  }
+}
+
+
+#ArgoCDポッドがアプリクラスターを操作する為のロール
+resource "aws_iam_role" "iam_role_eks_argocd_to_app" {
+  name               = "${var.project}-iam-role-eks-argocd-to-app"
+  assume_role_policy = data.aws_iam_policy_document.trust_policy_argocd_to_app.json
+}
+
+
+#信頼ポリシー（ArgoCDポッドがアプリクラスターを操作する為のロール用）
+data "aws_iam_policy_document" "trust_policy_argocd_to_app" {
+  statement {
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession"
+    ]
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+  }
 }

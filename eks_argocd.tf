@@ -22,18 +22,35 @@ resource "aws_eks_cluster" "eks_cluster_argocd" {
   depends_on = [aws_iam_role_policy_attachment.policy_attachment_eks_controlplane]
 }
 
-#アクセスエントリー（ローカル端末からkubectlを実行する用）
-resource "aws_eks_access_entry" "eks_access_entry_argocd" {
+#アクセスエントリー（ローカル端末からkubectl（閲覧）を実行する用）
+resource "aws_eks_access_entry" "eks_access_entry_argocd_viewer" {
   cluster_name  = aws_eks_cluster.eks_cluster_argocd.name
-  principal_arn = aws_iam_role.iam_role_eks_kubectl.arn
+  principal_arn = aws_iam_role.iam_role_eks_kubectl_viewer.arn
   type          = "STANDARD"
 }
 
-#アクセスエントリーへのKubernetesAPI権限のアタッチ（AWSAPIではなくKubernetesAPIの権限）
-resource "aws_eks_access_policy_association" "eks_access_policy_association_argocd" {
-  cluster_name  = aws_eks_access_entry.eks_access_entry_argocd.cluster_name
-  principal_arn = aws_eks_access_entry.eks_access_entry_argocd.principal_arn
+#アクセスエントリーへのKubernetesAPI権限（閲覧）のアタッチ（AWSAPIではなくKubernetesAPIの権限）
+resource "aws_eks_access_policy_association" "eks_access_policy_association_argocd_viewer" {
+  cluster_name  = aws_eks_access_entry.eks_access_entry_argocd_viewer.cluster_name
+  principal_arn = aws_eks_access_entry.eks_access_entry_argocd_viewer.principal_arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
+  access_scope {
+    type = "cluster"
+  }
+}
+
+#アクセスエントリー（Terraform Kubernetes Providerによる変更・管理用）
+resource "aws_eks_access_entry" "eks_access_entry_argocd_admin" {
+  cluster_name  = aws_eks_cluster.eks_cluster_argocd.name
+  principal_arn = aws_iam_role.iam_role_eks_kubectl_admin.arn
+  type          = "STANDARD"
+}
+
+#アクセスエントリーへのKubernetesAPI権限（変更・管理）のアタッチ（AWSAPIではなくKubernetesAPIの権限）
+resource "aws_eks_access_policy_association" "eks_access_policy_association_argocd_admin" {
+  cluster_name  = aws_eks_access_entry.eks_access_entry_argocd_admin.cluster_name
+  principal_arn = aws_eks_access_entry.eks_access_entry_argocd_admin.principal_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
   access_scope {
     type = "cluster"
   }
@@ -67,4 +84,39 @@ resource "aws_eks_node_group" "eks_node_group_argocd" {
     aws_route_table_association.private_routetable_subnet_1a,
     aws_route_table_association.private_routetable_subnet_1c
   ]
+}
+
+
+
+
+
+#アドオン（pod_identity_agent）を導入
+resource "aws_eks_addon" "eks_addon_pod_identity_agent_argocd" {
+  addon_name   = "eks-pod-identity-agent"
+  cluster_name = aws_eks_cluster.eks_cluster_argocd.name
+}
+
+
+#アドオン（pod_identity_agent）の設定（アプリクラスターを監視／操作する為のロールを付ける：application-controller）
+resource "aws_eks_pod_identity_association" "eks_pod_identity_association_argocd_to_app_application_controller" {
+  cluster_name    = aws_eks_cluster.eks_cluster_argocd.name
+  namespace       = "argocd"
+  role_arn        = aws_iam_role.iam_role_eks_argocd_to_app.arn
+  service_account = "argocd-application-controller"
+}
+
+#アドオン（pod_identity_agent）の設定（アプリクラスターを監視／操作する為のロールを付ける：applicationset-controller）
+resource "aws_eks_pod_identity_association" "eks_pod_identity_association_argocd_to_app_applicationset_controller" {
+  cluster_name    = aws_eks_cluster.eks_cluster_argocd.name
+  namespace       = "argocd"
+  role_arn        = aws_iam_role.iam_role_eks_argocd_to_app.arn
+  service_account = "argocd-applicationset-controller"
+}
+
+#アドオン（pod_identity_agent）の設定（アプリクラスターを監視／操作する為のロールを付ける：server）
+resource "aws_eks_pod_identity_association" "eks_pod_identity_association_argocd_to_app_server" {
+  cluster_name    = aws_eks_cluster.eks_cluster_argocd.name
+  namespace       = "argocd"
+  role_arn        = aws_iam_role.iam_role_eks_argocd_to_app.arn
+  service_account = "argocd-server"
 }

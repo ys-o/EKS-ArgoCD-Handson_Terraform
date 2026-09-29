@@ -8,7 +8,7 @@ terraform {
     }
 
   }
-  #ステートファイルをS3で保持
+  #ステートファイルをS3で保持（対応予定）
   # backend "s3" {
   #   bucket = "後で"
   #   key = "eksargocd.tfstate"
