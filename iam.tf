@@ -226,3 +226,57 @@ data "aws_iam_policy_document" "trust_policy_argocd_to_app" {
     }
   }
 }
+
+
+
+
+
+
+#Ingress用ロール
+resource "aws_iam_role" "iam_role_eks_ingress" {
+  name = "${var.project}-iam-role-eks-ingress"
+  assume_role_policy = data.aws_iam_policy_document.trust_policy_ingress.json
+}
+
+
+#カスタムポリシー（Ingressが、ALB／TG／SG等の操作を行うための権限を設定）
+data "aws_iam_policy_document" "iam_policy_document_ingress" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "elasticloadbalancing:*",
+      "ec2:*",
+      "iam:*"
+    ]
+    resources = ["*"]
+  }
+}
+
+
+resource "aws_iam_policy" "iam_policy_ingress" {
+  name = "${var.project}-iam-policy-ingress"
+  policy = data.aws_iam_policy_document.iam_policy_document_ingress.json
+  tags = {
+    Name = "${var.project}-iam-policy-ingress"
+  }
+}
+
+#ポリシーをアタッチ（Ingress用ロールにアタッチ）
+resource "aws_iam_role_policy_attachment" "policy_attachment_eks_ingress" {
+  role = aws_iam_role.iam_role_eks_ingress.name
+  policy_arn = aws_iam_policy.iam_policy_ingress.arn
+}
+
+#信頼ポリシー（Ingress用ロール用）
+data "aws_iam_policy_document" "trust_policy_ingress" {
+  statement {
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession"
+    ]
+    principals {
+      type = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+  }
+}
