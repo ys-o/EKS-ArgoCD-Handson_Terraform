@@ -15,14 +15,28 @@ terraform {
       version = "3.2.1"
     }
   }
-  #ステートファイルをS3で保持（対応予定）
-  # backend "s3" {
-  #   bucket = "後で"
-  #   key = "eksargocd.tfstate"
-  #   region = "ap-northeast-1"
-  #   profile = "terraform"
-  # }
+  #ステートファイルをS3で保持
+  backend "s3" {
+    bucket  = "tfstate-619071321369"
+    key     = "eksargocd.tfstate"
+    region  = "ap-northeast-1"
+    profile = "terraform"
+  }
 }
+
+
+#AWSコンソール操作時二使っている既存のIAMユーザー情報を取り込み
+data "aws_iam_user" "iam_user_console" {
+  user_name = var.console_user_name
+}
+
+
+
+
+
+
+
+
 
 
 #AWSプロバイダーデフォルト構成設定
@@ -37,11 +51,6 @@ provider "aws" {
   alias   = "provider_acm"
   profile = var.profile
   region  = var.region_acm
-}
-
-#AWSコンソール操作時のIAMユーザー
-data "aws_iam_user" "iam_user_console" {
-  user_name = var.console_user_name
 }
 
 
