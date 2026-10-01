@@ -90,9 +90,9 @@ resource "helm_release" "helm_release_argocd_app" {
       {
         applications = {
           "${var.project}-oya-application" = {
-            namespace = kubernetes_namespace_v1.kubernetes_namespace_argocd.metadata[0].name
+            namespace  = kubernetes_namespace_v1.kubernetes_namespace_argocd.metadata[0].name
             finalizers = ["resources-finalizer.argocd.argoproj.io"]
-            project     = "default"
+            project    = "default"
 
             source = {
               repoURL        = "https://github.com/ys-o/EKS-ArgoCD-Handson_ArgoCD_app_of_apps.git"

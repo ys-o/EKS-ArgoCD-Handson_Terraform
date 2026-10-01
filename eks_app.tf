@@ -125,8 +125,8 @@ resource "aws_eks_pod_identity_association" "eks_pod_identity_association_secret
 
 #アドオン（pod_identity_agent）の設定（ingressがLBまわりを管理する為のロールを付ける）
 resource "aws_eks_pod_identity_association" "eks_pod_identity_association_ingress" {
-  cluster_name = aws_eks_cluster.eks_cluster_app.name
-  namespace = "kube-system"
+  cluster_name    = aws_eks_cluster.eks_cluster_app.name
+  namespace       = "kube-system"
   service_account = "aws-load-balancer-controller"
-  role_arn = aws_iam_role.iam_role_eks_ingress.arn
+  role_arn        = aws_iam_role.iam_role_eks_ingress.arn
 }
