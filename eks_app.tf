@@ -130,3 +130,13 @@ resource "aws_eks_pod_identity_association" "eks_pod_identity_association_ingres
   service_account = "aws-load-balancer-controller"
   role_arn        = aws_iam_role.iam_role_eks_ingress.arn
 }
+
+
+#ArgoCDクラスターからAppクラスターへの443通信を通すルールを、AppクラスターのデフォルトSG
+resource "aws_vpc_security_group_ingress_rule" "sg_rule_eks_app_cluster" {
+  security_group_id            = aws_eks_cluster.eks_cluster_app.vpc_config[0].cluster_security_group_id
+  referenced_security_group_id = aws_eks_cluster.eks_cluster_argocd.vpc_config[0].cluster_security_group_id
+  from_port                    = 443
+  to_port                      = 443
+  ip_protocol                  = "tcp"
+}
