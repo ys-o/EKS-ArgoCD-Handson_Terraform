@@ -39,7 +39,10 @@ provider "aws" {
   region  = var.region_acm
 }
 
-
+#AWSコンソール操作時のIAMユーザー
+data "aws_iam_user" "iam_user_console" {
+  user_name = var.console_user_name
+}
 
 
 

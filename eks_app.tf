@@ -22,7 +22,7 @@ resource "aws_eks_cluster" "eks_cluster_app" {
   depends_on = [aws_iam_role_policy_attachment.policy_attachment_eks_controlplane]
 }
 
-#アクセスエントリー（ローカル端末からkubectl（閲覧）を実行する用）
+#アクセスエントリー（ローカル端末（CLI)からkubectl（閲覧）を実行する用）
 resource "aws_eks_access_entry" "eks_access_entry_app_viewer" {
   cluster_name  = aws_eks_cluster.eks_cluster_app.name
   principal_arn = aws_iam_role.iam_role_eks_kubectl_viewer.arn
@@ -73,6 +73,28 @@ resource "aws_eks_access_policy_association" "eks_access_policy_association_argo
     type = "cluster"
   }
 }
+
+
+
+#アクセスエントリー（AWSコンソールからクラスターの状態を確認する用）
+resource "aws_eks_access_entry" "eks_access_entry_app_console" {
+  cluster_name  = aws_eks_cluster.eks_cluster_app.name
+  principal_arn = data.aws_iam_user.iam_user_console.arn
+  type          = "STANDARD"
+}
+
+#アクセスエントリーへのKubernetesAPI権限（閲覧）のアタッチ（AWSAPIではなくKubernetesAPIの権限）
+resource "aws_eks_access_policy_association" "eks_access_policy_association_app_console" {
+  cluster_name  = aws_eks_access_entry.eks_access_entry_app_console.cluster_name
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminViewPolicy"
+  principal_arn = aws_eks_access_entry.eks_access_entry_app_console.principal_arn
+  access_scope {
+    type = "cluster"
+  }
+}
+
+
+
 
 
 

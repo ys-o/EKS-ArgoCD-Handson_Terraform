@@ -56,6 +56,28 @@ resource "aws_eks_access_policy_association" "eks_access_policy_association_argo
   }
 }
 
+
+#アクセスエントリー（AWSコンソールからクラスターの状態を確認する用）
+resource "aws_eks_access_entry" "eks_access_entry_argocd_console" {
+  cluster_name  = aws_eks_cluster.eks_cluster_argocd.name
+  principal_arn = data.aws_iam_user.iam_user_console.arn
+  type          = "STANDARD"
+}
+
+#アクセスエントリーへのKubernetesAPI権限（閲覧）のアタッチ（AWSAPIではなくKubernetesAPIの権限）
+resource "aws_eks_access_policy_association" "eks_access_policy_association_argocd_console" {
+  cluster_name  = aws_eks_access_entry.eks_access_entry_argocd_console.cluster_name
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminViewPolicy"
+  principal_arn = aws_eks_access_entry.eks_access_entry_argocd_console.principal_arn
+  access_scope {
+    type = "cluster"
+  }
+}
+
+
+
+
+
 #ノードグループ（ロールへのポリシーアタッチ、ネットワークまわりをdepends on指定）
 resource "aws_eks_node_group" "eks_node_group_argocd" {
   node_group_name = "${var.project}-eks-node-group-argocd"
