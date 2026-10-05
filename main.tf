@@ -15,12 +15,10 @@ terraform {
       version = "3.2.1"
     }
   }
-  #ステートファイルをS3で保持
+  #ステートファイルをS3で保持（profile・bucketを別途定義する必要あり、GitHub非公開）
   backend "s3" {
-    bucket  = "tfstate-619071321369"
-    key     = "eksargocd.tfstate"
-    region  = "ap-northeast-1"
-    profile = "terraform"
+    key    = "eksargocd.tfstate"
+    region = "ap-northeast-1"
   }
 }
 

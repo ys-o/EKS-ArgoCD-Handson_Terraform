@@ -4,7 +4,10 @@ resource "kubernetes_namespace_v1" "kubernetes_namespace_argocd" {
   metadata {
     name = "argocd"
   }
-  depends_on = [aws_eks_access_policy_association.eks_access_policy_association_argocd_admin]
+  depends_on = [
+    aws_eks_access_policy_association.eks_access_policy_association_argocd_admin,
+    terraform_data.eks_cani_check
+  ]
 }
 
 #eksリソース群が完成した後、argocdを導入する
@@ -79,12 +82,14 @@ resource "helm_release" "helm_release_argocd_app" {
   chart           = "argocd-apps"
   version         = "2.0.5"
   namespace       = kubernetes_namespace_v1.kubernetes_namespace_argocd.metadata[0].name
-  wait            = true
+  wait            = false
   timeout         = 300
   atomic          = true
   cleanup_on_fail = true
-  depends_on      = [kubernetes_secret_v1_data.kubernetes_secret_argocd_to_app_data]
-
+  depends_on = [
+    kubernetes_secret_v1_data.kubernetes_secret_argocd_to_app_data,
+    terraform_data.all_destroy_dependency_check
+  ]
   values = [
     yamlencode(
       {
