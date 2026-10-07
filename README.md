@@ -30,4 +30,20 @@ ecr.tf             # Web/AP用ECRリポジトリ
 argocd.tf          # Argo CD導入、アプリクラスター登録、親Application
 terraform_data.tf  # 初回イメージ準備、設定値転記、権限確認、削除待ち
 outputs.tf         # RDS接続先などの出力
+
+<<GITHUB非公開のファイル群>>
+hidden.auto.tfvars　#　GitHub非公開（環境依存）の変数
+hidden.s3.tfbackend #　tfstate管理用S3の定義
+```
+
+## GitHub非公開（環境依存）の変数
+
+```text
+domain                          # ドメイン
+developer_public_ip_cidrs       # 作業者用端末のIPアドレス
+aws_account_id                  # AWSアカウントID
+console_user_name               # AWSコンソールにログインするIAMユーザー名
+application_php_localpath       # phpアプリのディレクトリ（初回イメージをPUSHするため）
+application_manifests_localpath # phpアプリマニフェストのディレクトリ（初回にタグを書き換えてPUSHするため）
+profile                         # CLI上のterraform用profile名
 ```
