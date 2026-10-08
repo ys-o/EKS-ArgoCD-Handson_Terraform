@@ -14,6 +14,10 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "3.2.1"
     }
+    http = {
+      source  = "hashicorp/http"
+      version = "3.6.2"
+    }
   }
   #ステートファイルをS3で保持（profile・bucketを別途定義する必要あり、GitHub非公開）
   backend "s3" {
@@ -23,14 +27,10 @@ terraform {
 }
 
 
-#AWSコンソール操作時二使っている既存のIAMユーザー情報を取り込み
+#AWSコンソール操作時に使っている既存のIAMユーザー情報を取り込み
 data "aws_iam_user" "iam_user_console" {
   user_name = var.console_user_name
 }
-
-
-
-
 
 
 

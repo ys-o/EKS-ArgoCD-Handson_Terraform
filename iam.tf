@@ -156,16 +156,8 @@ resource "aws_iam_role" "iam_role_secret_manager_view" {
   assume_role_policy = data.aws_iam_policy_document.trust_policy_secret_manager_view.json
 }
 
-#Secret Manager上での検索、およびDB認証情報を取得することを許可するポリシー
+#Secret Manager上でDB認証情報を取得／参照することを許可するポリシー
 data "aws_iam_policy_document" "iam_policy_document_secret_manager_view" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "secretsmanager:ListSecrets",
-      "secretsmanager:BatchGetSecretValue"
-    ]
-    resources = ["*"]
-  }
   statement {
     effect = "Allow"
     actions = [
@@ -202,8 +194,30 @@ data "aws_iam_policy_document" "trust_policy_secret_manager_view" {
       type        = "Service"
       identifiers = ["pods.eks.amazonaws.com"]
     }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/eks-cluster-arn"
+      values   = [aws_eks_cluster.eks_cluster_app.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/kubernetes-namespace"
+      values   = ["external-secrets"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/kubernetes-service-account"
+      values   = ["external-secrets"]
+    }
   }
 }
+
+
+
+
+
+
 
 
 #ArgoCDポッドがアプリクラスターを操作する為のロール
@@ -224,6 +238,26 @@ data "aws_iam_policy_document" "trust_policy_argocd_to_app" {
       type        = "Service"
       identifiers = ["pods.eks.amazonaws.com"]
     }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/eks-cluster-arn"
+      values   = [aws_eks_cluster.eks_cluster_argocd.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/kubernetes-namespace"
+      values   = ["argocd"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/kubernetes-service-account"
+      values = [
+        "argocd-application-controller",
+        "argocd-applicationset-controller",
+        "argocd-server"
+      ]
+    }
   }
 }
 
@@ -238,24 +272,17 @@ resource "aws_iam_role" "iam_role_eks_ingress" {
   assume_role_policy = data.aws_iam_policy_document.trust_policy_ingress.json
 }
 
-
-#カスタムポリシー（Ingressが、ALB／TG／SG等の操作を行うための権限を設定）
-data "aws_iam_policy_document" "iam_policy_document_ingress" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "elasticloadbalancing:*",
-      "ec2:*",
-      "iam:*"
-    ]
-    resources = ["*"]
+#公式リポジトリからポリシー用JSONを直接取得
+data "http" "albcontroller_official_policy" {
+  url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v3.5.0/docs/install/iam_policy.json"
+  request_headers = {
+    Accept = "application/json"
   }
 }
 
-
 resource "aws_iam_policy" "iam_policy_ingress" {
   name   = "${var.project}-iam-policy-ingress"
-  policy = data.aws_iam_policy_document.iam_policy_document_ingress.json
+  policy = data.http.albcontroller_official_policy.response_body
   tags = {
     Name = "${var.project}-iam-policy-ingress"
   }
@@ -277,6 +304,22 @@ data "aws_iam_policy_document" "trust_policy_ingress" {
     principals {
       type        = "Service"
       identifiers = ["pods.eks.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/eks-cluster-arn"
+      values   = [aws_eks_cluster.eks_cluster_app.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/kubernetes-namespace"
+      values   = ["kube-system"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/kubernetes-service-account"
+      values   = ["aws-load-balancer-controller"]
     }
   }
 }
